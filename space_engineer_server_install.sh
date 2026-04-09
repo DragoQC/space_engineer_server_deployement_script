@@ -59,6 +59,30 @@ log_error() {
   echo -e "${ERROR_COLOR}✖ $1${RESET}"
 }
 
+run_steamcmd_update() {
+  local max_attempts=3
+  local attempt
+
+  for attempt in $(seq 1 "$max_attempts"); do
+    if "$STEAMCMD_DIR/steamcmd.sh" \
+      +@sSteamCmdForcePlatformType windows \
+      +force_install_dir "$SERVER_FILES_DIR" \
+      +login anonymous \
+      +app_update "$APP_ID" validate \
+      +quit; then
+      return 0
+    fi
+
+    if [ "$attempt" -lt "$max_attempts" ]; then
+      log_warn "SteamCMD install failed on attempt $attempt/$max_attempts. Retrying in 10 seconds..."
+      sleep 10
+    fi
+  done
+
+  log_error "SteamCMD failed to install/update app $APP_ID after $max_attempts attempts."
+  return 1
+}
+
 
 SERVICE_NAME="space-engineer"
 
@@ -68,6 +92,7 @@ BASE_DIR="/opt/space-engineer"
 CONFIG_DIR="$BASE_DIR/server-config"
 CFG_FILE="$CONFIG_DIR/SpaceEngineers-Dedicated.cfg"
 START_SCRIPT="$BASE_DIR/start-space-engineer.sh"
+UPDATE_SCRIPT="$BASE_DIR/update-space-engineer.sh"
 SERVICE_FILE="/etc/systemd/system/space-engineer.service"
 WINDOWS_CONFIG_DIR='Z:\opt\space-engineer\server-config'
 
@@ -138,12 +163,7 @@ fi
 # Space Engineer server install / update
 # -------------------------------------------------------------------
 log_game "Installing $GAME_NAME server..."
-"$STEAMCMD_DIR/steamcmd.sh" \
-  +@sSteamCmdForcePlatformType windows \
-  +force_install_dir "$SERVER_FILES_DIR" \
-  +login anonymous \
-  +app_update "$APP_ID" validate \
-  +quit
+run_steamcmd_update
 log_ok "Installed $GAME_NAME server..."
 # -------------------------------------------------------------------
 # Proton prefix (one-time)
@@ -371,6 +391,40 @@ EOF
 
 chmod +x "$START_SCRIPT"
 log_ok "Created start script..."
+
+# -----------------------------
+# Update script
+# -----------------------------
+log_file "Creating update script..."
+
+cat <<'EOF' > "$UPDATE_SCRIPT"
+#!/bin/bash
+set -e
+
+APP_ID="298740"
+STEAMCMD_DIR="/opt/space-engineer/steamcmd"
+SERVER_FILES_DIR="/opt/space-engineer/server-files"
+
+for attempt in 1 2 3; do
+  if "$STEAMCMD_DIR/steamcmd.sh" \
+    +@sSteamCmdForcePlatformType windows \
+    +force_install_dir "$SERVER_FILES_DIR" \
+    +login anonymous \
+    +app_update "$APP_ID" validate \
+    +quit; then
+    exit 0
+  fi
+
+  if [ "$attempt" -lt 3 ]; then
+    sleep 10
+  fi
+done
+
+exit 1
+EOF
+
+chmod +x "$UPDATE_SCRIPT"
+log_ok "Created update script..."
 # -----------------------------
 # systemd service
 # -----------------------------
@@ -384,7 +438,7 @@ After=network.target
 TimeoutStartSec=0
 Type=simple
 WorkingDirectory=/opt/space-engineer
-ExecStartPre=/opt/space-engineer/steamcmd/steamcmd.sh +@sSteamCmdForcePlatformType windows +force_install_dir /opt/space-engineer/server-files +login anonymous +app_update $APP_ID validate +quit
+ExecStartPre=/opt/space-engineer/update-space-engineer.sh
 ExecStart=/opt/space-engineer/start-space-engineer.sh
 Restart=on-failure
 SuccessExitStatus=0 3

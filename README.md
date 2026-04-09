@@ -41,8 +41,7 @@ Run the installer directly:
 > Run it inside Debian 13 LXC
 ```bash
 apt update && apt upgrade -y && apt install curl -y
-chmod +x ./space_engineer_server_install.sh
-./space_engineer_server_install.sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/DragoQC/space_engineer_server_deployement_script/main/space_engineer_server_install.sh)"
 ```
 
 > ℹ️ **Note**  
