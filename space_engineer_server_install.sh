@@ -14,12 +14,17 @@ RESET='\033[0m'
 # Themed
 STEAM_COLOR='\033[38;5;214m'     # orange-yellow
 PROTON_COLOR='\033[38;5;208m'    # orange
-ARK_COLOR='\033[38;5;117m'       # sky blue
+GAME_COLOR='\033[38;5;203m'       # warm red
 SUCCESS_COLOR='\033[38;5;82m'    # bright green
 INFO_COLOR='\033[38;5;250m'      # light gray
 WARN_COLOR='\033[38;5;220m'      # warning yellow
 ERROR_COLOR='\033[38;5;196m'     # bright red
 SECTION_COLOR='\033[38;5;141m'   # purple
+
+# App ID of the dedicated server on SteamDB
+APP_ID="298740"
+GAME_NAME="Space Engineer"
+SERVER_NAME="Space Engineer Server"
 
 
 log_file() {
@@ -34,8 +39,8 @@ log_proton() {
   echo -e "${PROTON_COLOR}[Proton]${RESET} $1"
 }
 
-log_ark() {
-  echo -e "${ARK_COLOR}[ARK]${RESET} $1"
+log_game() {
+  echo -e "${GAME_COLOR}[${GAME_NAME}]${RESET} $1"
 }
 
 log_ok() {
@@ -55,16 +60,16 @@ log_error() {
 }
 
 
-SERVICE_NAME="asa"
+SERVICE_NAME="space-engineer"
 
 # Base directory for all instances
-BASE_DIR="/opt/asa"
-RCON_SCRIPT="$BASE_DIR/rcon.py"
+BASE_DIR="/opt/space-engineer"
 
 CONFIG_DIR="$BASE_DIR/server-config"
-ENV_FILE="$CONFIG_DIR/asa.env"
-START_SCRIPT="$BASE_DIR/start-asa.sh"
-SERVICE_FILE="/etc/systemd/system/asa.service"
+CFG_FILE="$CONFIG_DIR/SpaceEngineers-Dedicated.cfg"
+START_SCRIPT="$BASE_DIR/start-space-engineer.sh"
+SERVICE_FILE="/etc/systemd/system/space-engineer.service"
+WINDOWS_CONFIG_DIR='Z:\opt\space-engineer\server-config'
 
 # Define the base paths as variables
 STEAMCMD_DIR="$BASE_DIR/steamcmd"
@@ -76,7 +81,7 @@ PROTON_DIR="$BASE_DIR/$PROTON_VERSION"
 STEAMCMD_URL="https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz"
 PROTON_URL="https://github.com/GloriousEggroll/proton-ge-custom/releases/download/$PROTON_VERSION/$PROTON_VERSION.tar.gz"
 
-log_ark "ARK Survival Ascended – Single Server Installer"
+log_game "$GAME_NAME - Single Server Installer"
 
 # -------------------------------------------------------------------
 # Dependencies
@@ -92,7 +97,7 @@ log_ok "Installed dependencies..."
 # -------------------------------------------------------------------
 # Directories
 # -------------------------------------------------------------------
-mkdir -p "$STEAMCMD_DIR" "$SERVER_FILES_DIR" "$PROTON_DIR" "$CONFIG_DIR"
+mkdir -p "$STEAMCMD_DIR" "$SERVER_FILES_DIR" "$PROTON_DIR" "$CONFIG_DIR" "$CONFIG_DIR/Saves/World" "$CONFIG_DIR/Checkpoint"
 
 # -------------------------------------------------------------------
 # SteamCMD
@@ -130,21 +135,21 @@ else
 fi
 
 # -------------------------------------------------------------------
-# ARK server install / update
+# Space Engineer server install / update
 # -------------------------------------------------------------------
-log_ark "Installing ARK server..."
+log_game "Installing $GAME_NAME server..."
 "$STEAMCMD_DIR/steamcmd.sh" \
   +@sSteamCmdForcePlatformType windows \
   +force_install_dir "$SERVER_FILES_DIR" \
   +login anonymous \
-  +app_update 2430930 validate \
+  +app_update "$APP_ID" validate \
   +quit
-log_ok "Installed ARK server..."
+log_ok "Installed $GAME_NAME server..."
 # -------------------------------------------------------------------
 # Proton prefix (one-time)
 # -------------------------------------------------------------------
 
-PROTON_PREFIX="$SERVER_FILES_DIR/steamapps/compatdata/2430930"
+PROTON_PREFIX="$SERVER_FILES_DIR/steamapps/compatdata/$APP_ID"
 
 if [ ! -d "$PROTON_PREFIX/pfx" ]; then
     log_proton "Initializing Proton prefix..."
@@ -159,27 +164,174 @@ fi
 # Create default config
 # -----------------------------
 log_file "Creating default config file..."
-if [ ! -f "$ENV_FILE" ]; then
-cat <<'EOF' > "$ENV_FILE"
-# ARK Survival Ascended configuration
-
-MAP_NAME=TheIsland_WP
-SERVER_NAME="ARK ASA Server"
-MAX_PLAYERS=20
-
-GAME_PORT=7777
-QUERY_PORT=27015
-RCON_PORT=27020
-
-# Comma-separated mod IDs
-MOD_IDS=""
-
-# Cluster (Optional Set cluster ID when ready to use)
-CLUSTER_ID=""
-CLUSTER_DIR="/opt/asa/cluster"
-
-# Extra flags
-EXTRA_ARGS="-NoBattlEye -crossplay"
+if [ ! -f "$CFG_FILE" ]; then
+cat <<EOF > "$CFG_FILE"
+<?xml version="1.0"?>
+<MyConfigDedicated xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SessionSettings>
+    <GameMode>Survival</GameMode>
+    <InventorySizeMultiplier>3</InventorySizeMultiplier>
+    <BlocksInventorySizeMultiplier>1</BlocksInventorySizeMultiplier>
+    <AssemblerSpeedMultiplier>3</AssemblerSpeedMultiplier>
+    <AssemblerEfficiencyMultiplier>3</AssemblerEfficiencyMultiplier>
+    <RefinerySpeedMultiplier>3</RefinerySpeedMultiplier>
+    <OnlineMode>PUBLIC</OnlineMode>
+    <MaxPlayers>16</MaxPlayers>
+    <MaxFloatingObjects>100</MaxFloatingObjects>
+    <MaxBackupSaves>5</MaxBackupSaves>
+    <MaxGridSize>0</MaxGridSize>
+    <MaxBlocksPerPlayer>0</MaxBlocksPerPlayer>
+    <TotalPCU>320000</TotalPCU>
+    <PiratePCU>50000</PiratePCU>
+    <MaxFactionsCount>0</MaxFactionsCount>
+    <BlockLimitsEnabled>PER_PLAYER</BlockLimitsEnabled>
+    <EnableRemoteBlockRemoval>true</EnableRemoteBlockRemoval>
+    <EnvironmentHostility>SAFE</EnvironmentHostility>
+    <AutoHealing>true</AutoHealing>
+    <EnableCopyPaste>false</EnableCopyPaste>
+    <WeaponsEnabled>true</WeaponsEnabled>
+    <ShowPlayerNamesOnHud>true</ShowPlayerNamesOnHud>
+    <ThrusterDamage>true</ThrusterDamage>
+    <CargoShipsEnabled>true</CargoShipsEnabled>
+    <EnableSpectator>false</EnableSpectator>
+    <WorldSizeKm>0</WorldSizeKm>
+    <RespawnShipDelete>true</RespawnShipDelete>
+    <ResetOwnership>false</ResetOwnership>
+    <WelderSpeedMultiplier>2</WelderSpeedMultiplier>
+    <GrinderSpeedMultiplier>2</GrinderSpeedMultiplier>
+    <RealisticSound>false</RealisticSound>
+    <HackSpeedMultiplier>0.33</HackSpeedMultiplier>
+    <PermanentDeath>false</PermanentDeath>
+    <AutoSaveInMinutes>5</AutoSaveInMinutes>
+    <EnableSaving>true</EnableSaving>
+    <InfiniteAmmo>false</InfiniteAmmo>
+    <EnableContainerDrops>false</EnableContainerDrops>
+    <SpawnShipTimeMultiplier>0</SpawnShipTimeMultiplier>
+    <ProceduralDensity>0.35</ProceduralDensity>
+    <ProceduralSeed>0</ProceduralSeed>
+    <DestructibleBlocks>true</DestructibleBlocks>
+    <EnableIngameScripts>true</EnableIngameScripts>
+    <ViewDistance>15000</ViewDistance>
+    <EnableToolShake>true</EnableToolShake>
+    <VoxelGeneratorVersion>4</VoxelGeneratorVersion>
+    <EnableOxygen>true</EnableOxygen>
+    <EnableOxygenPressurization>true</EnableOxygenPressurization>
+    <Enable3rdPersonView>true</Enable3rdPersonView>
+    <EnableEncounters>true</EnableEncounters>
+    <EnableConvertToStation>true</EnableConvertToStation>
+    <StationVoxelSupport>false</StationVoxelSupport>
+    <EnableSunRotation>true</EnableSunRotation>
+    <EnableRespawnShips>true</EnableRespawnShips>
+    <ScenarioEditMode>false</ScenarioEditMode>
+    <Scenario>false</Scenario>
+    <CanJoinRunning>false</CanJoinRunning>
+    <PhysicsIterations>8</PhysicsIterations>
+    <SunRotationIntervalMinutes>119.999992</SunRotationIntervalMinutes>
+    <EnableJetpack>true</EnableJetpack>
+    <SpawnWithTools>true</SpawnWithTools>
+    <StartInRespawnScreen>false</StartInRespawnScreen>
+    <EnableVoxelDestruction>true</EnableVoxelDestruction>
+    <MaxDrones>5</MaxDrones>
+    <EnableDrones>true</EnableDrones>
+    <EnableWolfs>false</EnableWolfs>
+    <EnableSpiders>false</EnableSpiders>
+    <FloraDensityMultiplier>1</FloraDensityMultiplier>
+    <EnableStructuralSimulation>false</EnableStructuralSimulation>
+    <MaxActiveFracturePieces>50</MaxActiveFracturePieces>
+    <BlockTypeLimits>
+      <dictionary>
+      </dictionary>
+    </BlockTypeLimits>
+    <EnableScripterRole>true</EnableScripterRole>
+    <MinDropContainerRespawnTime>5</MinDropContainerRespawnTime>
+    <MaxDropContainerRespawnTime>8</MaxDropContainerRespawnTime>
+    <EnableTurretsFriendlyFire>false</EnableTurretsFriendlyFire>
+    <EnableSubgridDamage>false</EnableSubgridDamage>
+    <SyncDistance>3000</SyncDistance>
+    <ExperimentalMode>true</ExperimentalMode>
+    <AdaptiveSimulationQuality>true</AdaptiveSimulationQuality>
+    <EnableVoxelHand>true</EnableVoxelHand>
+    <RemoveOldIdentitiesH>0</RemoveOldIdentitiesH>
+    <TrashRemovalEnabled>true</TrashRemovalEnabled>
+    <StopGridsPeriodMin>15</StopGridsPeriodMin>
+    <TrashFlagsValue>7706</TrashFlagsValue>
+    <AFKTimeountMin>0</AFKTimeountMin>
+    <BlockCountThreshold>20</BlockCountThreshold>
+    <PlayerDistanceThreshold>500</PlayerDistanceThreshold>
+    <OptimalGridCount>0</OptimalGridCount>
+    <PlayerInactivityThreshold>0</PlayerInactivityThreshold>
+    <PlayerCharacterRemovalThreshold>15</PlayerCharacterRemovalThreshold>
+    <VoxelTrashRemovalEnabled>false</VoxelTrashRemovalEnabled>
+    <VoxelPlayerDistanceThreshold>5000</VoxelPlayerDistanceThreshold>
+    <VoxelGridDistanceThreshold>5000</VoxelGridDistanceThreshold>
+    <VoxelAgeThreshold>24</VoxelAgeThreshold>
+    <EnableResearch>true</EnableResearch>
+    <EnableGoodBotHints>true</EnableGoodBotHints>
+    <OptimalSpawnDistance>50000</OptimalSpawnDistance>
+    <EnableAutorespawn>true</EnableAutorespawn>
+    <EnableBountyContracts>true</EnableBountyContracts>
+    <EnableSupergridding>false</EnableSupergridding>
+    <EnableEconomy>true</EnableEconomy>
+    <DepositsCountCoefficient>1</DepositsCountCoefficient>
+    <DepositSizeDenominator>60</DepositSizeDenominator>
+    <WeatherSystem>true</WeatherSystem>
+    <HarvestRatioMultiplier>0.8</HarvestRatioMultiplier>
+    <TradeFactionsCount>15</TradeFactionsCount>
+    <StationsDistanceInnerRadius>10000000</StationsDistanceInnerRadius>
+    <StationsDistanceOuterRadiusStart>10000000</StationsDistanceOuterRadiusStart>
+    <StationsDistanceOuterRadiusEnd>30000000</StationsDistanceOuterRadiusEnd>
+    <EconomyTickInSeconds>1200</EconomyTickInSeconds>
+    <SimplifiedSimulation>false</SimplifiedSimulation>
+    <SuppressedWarnings />
+    <EnablePcuTrading>true</EnablePcuTrading>
+    <FamilySharing>true</FamilySharing>
+    <EnableSelectivePhysicsUpdates>false</EnableSelectivePhysicsUpdates>
+  </SessionSettings>
+  <LoadWorld>${WINDOWS_CONFIG_DIR}\\Saves\\World</LoadWorld>
+  <IP>0.0.0.0</IP>
+  <SteamPort>8766</SteamPort>
+  <ServerPort>27016</ServerPort>
+  <AsteroidAmount>0</AsteroidAmount>
+  <Administrators>
+  </Administrators>
+  <Banned />
+  <GroupID>0</GroupID>
+  <ServerName>${SERVER_NAME}</ServerName>
+  <WorldName>Self Hosted Server World</WorldName>
+  <PauseGameWhenEmpty>false</PauseGameWhenEmpty>
+  <MessageOfTheDay />
+  <MessageOfTheDayUrl />
+  <AutoRestartEnabled>true</AutoRestartEnabled>
+  <AutoRestatTimeInMin>720</AutoRestatTimeInMin>
+  <AutoRestartSave>true</AutoRestartSave>
+  <AutoUpdateEnabled>true</AutoUpdateEnabled>
+  <AutoUpdateCheckIntervalInMin>10</AutoUpdateCheckIntervalInMin>
+  <AutoUpdateRestartDelayInMin>15</AutoUpdateRestartDelayInMin>
+  <AutoUpdateSteamBranch />
+  <AutoUpdateBranchPassword />
+  <IgnoreLastSession>true</IgnoreLastSession>
+  <PremadeCheckpointPath>${WINDOWS_CONFIG_DIR}\\Checkpoint</PremadeCheckpointPath>
+  <ServerDescription />
+  <ServerPasswordHash />
+  <ServerPasswordSalt />
+  <Reserved />
+  <RemoteApiEnabled>false</RemoteApiEnabled>
+  <RemoteSecurityKey />
+  <RemoteApiPort>8080</RemoteApiPort>
+  <Plugins />
+  <WatcherInterval>30</WatcherInterval>
+  <WatcherSimulationSpeedMinimum>0.05</WatcherSimulationSpeedMinimum>
+  <ManualActionDelay>5</ManualActionDelay>
+  <ManualActionChatMessage>Server will be shut down in {0} min(s).</ManualActionChatMessage>
+  <AutodetectDependencies>true</AutodetectDependencies>
+  <SaveChatToLog>false</SaveChatToLog>
+  <NetworkParameters>
+    <Parameter>globalMaxUpload:600</Parameter>
+    <Parameter>peerMaxUpload:600</Parameter>
+    <Parameter>statWindow:60</Parameter>
+    <Parameter>peakStatWindow:60</Parameter>
+  </NetworkParameters>
+</MyConfigDedicated>
 EOF
 fi
 log_ok "Created default config file..."
@@ -192,68 +344,29 @@ cat <<'EOF' > "$START_SCRIPT"
 #!/bin/bash
 set -e
 
-source /opt/asa/server-config/asa.env
-
-BASE_DIR="/opt/asa"
+APP_ID="298740"
+BASE_DIR="/opt/space-engineer"
+CONFIG_DIR="$BASE_DIR/server-config"
 SERVER_FILES_DIR="$BASE_DIR/server-files"
-STEAMCMD_DIR="$BASE_DIR/steamcmd"
 PROTON_DIR="$BASE_DIR/GE-Proton10-4"
+WINDOWS_CONFIG_DIR='Z:\opt\space-engineer\server-config'
 
-# -----------------------------
-# Optional cluster support
-# -----------------------------
-CLUSTER_ARGS=""
-if [ -n "$CLUSTER_ID" ]; then
-  mkdir -p "$CLUSTER_DIR"
-  CLUSTER_ARGS="-ClusterDirOverride=$CLUSTER_DIR -ClusterId=$CLUSTER_ID"
-fi
-
-# -----------------------------
-# Optional Extra args
-# -----------------------------
-CONFIG_EXTRA_ARGS=""
-if [ -n "$EXTRA_ARGS" ]; then
-  CONFIG_EXTRA_ARGS=$EXTRA_ARGS
-fi
-
+mkdir -p "$CONFIG_DIR" "$CONFIG_DIR/Saves/World" "$CONFIG_DIR/Checkpoint"
 
 # -----------------------------
 # Proton environment
 # -----------------------------
-export STEAM_COMPAT_DATA_PATH="$SERVER_FILES_DIR/steamapps/compatdata/2430930"
+export STEAM_COMPAT_DATA_PATH="$SERVER_FILES_DIR/steamapps/compatdata/$APP_ID"
 export STEAM_COMPAT_CLIENT_INSTALL_PATH="$BASE_DIR"
-
-# -----------------------------
-# Mods
-# -----------------------------
-MOD_ARG=""
-if [ -n "$MOD_IDS" ]; then
-  MOD_ARG="-Mods=$MOD_IDS"
-fi
 
 # -----------------------------
 # Start server (PID belongs to systemd)
 # -----------------------------
 exec "$PROTON_DIR/proton" run \
-  "$SERVER_FILES_DIR/ShooterGame/Binaries/Win64/ArkAscendedServer.exe" \
-  "$MAP_NAME?listen?SessionName=$SERVER_NAME?RCONEnabled=True" \
-  -WinLiveMaxPlayers=$MAX_PLAYERS \
-  -Port=$GAME_PORT \
-  $MOD_ARG \
-	$CLUSTER_ARGS \
-  -QueryPort=$QUERY_PORT \
-  -RCONPort=$RCON_PORT \
-  -NoSteamClient \
-  -NoSteam \
-  -NoEOS \
-  -nullrhi \
-  -nosound \
-  -NoSplash \
-  -log \
-  -server \
-  -nosteamclient \
-  -game	\
-	$CONFIG_EXTRA_ARGS
+  "$SERVER_FILES_DIR/DedicatedServer64/SpaceEngineersDedicated.exe" \
+  -console \
+  -path "$WINDOWS_CONFIG_DIR" \
+  -ignorelastsession
 EOF
 
 chmod +x "$START_SCRIPT"
@@ -264,15 +377,15 @@ log_ok "Created start script..."
 log_file "Creating service..."
 cat <<EOF > "$SERVICE_FILE"
 [Unit]
-Description=ARK Survival Ascended Server
+Description=$GAME_NAME Server
 After=network.target
 
 [Service]
 TimeoutStartSec=0
 Type=simple
-WorkingDirectory=/opt/asa
-ExecStartPre=/opt/asa/steamcmd/steamcmd.sh +@sSteamCmdForcePlatformType windows +force_install_dir /opt/asa/server-files +login anonymous +app_update 2430930 validate +quit
-ExecStart=/opt/asa/start-asa.sh
+WorkingDirectory=/opt/space-engineer
+ExecStartPre=/opt/space-engineer/steamcmd/steamcmd.sh +@sSteamCmdForcePlatformType windows +force_install_dir /opt/space-engineer/server-files +login anonymous +app_update $APP_ID validate +quit
+ExecStart=/opt/space-engineer/start-space-engineer.sh
 Restart=on-failure
 SuccessExitStatus=0 3
 RestartSec=10
@@ -290,8 +403,5 @@ systemctl daemon-reload
 systemctl enable --now "$SERVICE_NAME"
 
 log_ok "Installation complete."
-log_ark "Service status:"
+log_game "Service status:"
 systemctl status "$SERVICE_NAME" --no-pager
-
-
-

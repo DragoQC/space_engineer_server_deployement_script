@@ -1,11 +1,11 @@
 
-# 🦖 ARK: Survival Ascended – Single Server Installer (Proxmox / LXC)
+# 🦖 Space Engineer – Single Server Installer (Proxmox / LXC)
 
-This repository provides a **Bash script** to install and run **ARK: Survival Ascended** on Linux using **SteamCMD + Proton GE**, fully managed by **systemd**.
+This repository provides a **Bash script** to install and run **Space Engineer** on Linux using **SteamCMD + Proton GE**, fully managed by **systemd**.
 
 
 
-The main objective is to run **one ARK server per LXC container** in order to achieve:
+The main objective is to run **one Space Engineer server per LXC container** in order to achieve:
 <ul>
 	<li>
 		🧱 Clean isolation
@@ -31,7 +31,7 @@ This project is designed for **self-hosters**, **homelab setups**, and **Proxmox
 - 🌐 **curl** installed
 - 📦 **Debian 13 LXC container** (tested)
 
-⚠️ Each LXC container must host **only one ARK server**.
+⚠️ Each LXC container must host **only one Space Engineer server**.
 
 ---
 
@@ -41,7 +41,8 @@ Run the installer directly:
 > Run it inside Debian 13 LXC
 ```bash
 apt update && apt upgrade -y && apt install curl -y
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/DragoQC/ASA_SingleServer_Proxmox_Script/main/asa-install-single-server.sh)"
+chmod +x ./space_engineer_server_install.sh
+./space_engineer_server_install.sh
 ```
 
 > ℹ️ **Note**  
@@ -56,24 +57,24 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/DragoQC/ASA_SingleServer
 - systemd managed service
 - Automatic restart on crash
 - Automatic update on service restart
-- Optional cluster support
 - Mod support via config file
 - Clean and simple file layout
-- Example `Game.ini` and `GameUserSettings.ini` included
+- Default `SpaceEngineers-Dedicated.cfg` generated on install
 
 ---
 
 ## 📁 Directory Layout
 
 ```text
-/opt/asa/
-├── start-asa.sh
+/opt/space-engineer/
+├── start-space-engineer.sh
 ├── server-config/
-│   └── asa.env
+│   ├── SpaceEngineers-Dedicated.cfg
+│   ├── Saves/
+│   └── Checkpoint/
 ├── server-files/
 ├── steamcmd/
-├── GE-Proton10-4/
-└── cluster/
+└── GE-Proton10-4/
 ```
 
 ## ⚙️ Configuration
@@ -81,26 +82,23 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/DragoQC/ASA_SingleServer
 All user configuration is done in:
 
 ```bash
-/opt/asa/server-config/asa.env
+/opt/space-engineer/server-config/SpaceEngineers-Dedicated.cfg
 ```
 
 ### Example
 
-```env
-MAP_NAME=TheIsland_WP
-SERVER_NAME="ARK ASA Server"
-MAX_PLAYERS=20
-
-GAME_PORT=7777
-QUERY_PORT=27015
-RCON_PORT=27020
-
-MOD_IDS="123456789,987654321"
-
-CLUSTER_ID=""
-CLUSTER_DIR="/opt/asa/cluster"
-
-EXTRA_ARGS="-NoBattlEye -crossplay"
+```xml
+<?xml version="1.0"?>
+<MyConfigDedicated>
+  <SessionSettings>
+    <GameMode>Survival</GameMode>
+    <MaxPlayers>16</MaxPlayers>
+  </SessionSettings>
+  <IP>0.0.0.0</IP>
+  <ServerPort>27016</ServerPort>
+  <ServerName>Space Engineer Server</ServerName>
+  <WorldName>Self Hosted Server World</WorldName>
+</MyConfigDedicated>
 ```
 ---
 
@@ -108,30 +106,8 @@ EXTRA_ARGS="-NoBattlEye -crossplay"
 
 Run the following command:
 ```bash
-systemctl restart asa
+systemctl restart space-engineer
 ```
-
-🧬 Cluster Support (Optional)
-
-Cluster support is disabled by default.
-
-To enable it
-
-Mount the same shared directory on each server:
-```bash
-/opt/asa/cluster
-```
-Edit asa.env and set:
-```bash
-CLUSTER_ID=mycluster
-
-CLUSTER_DIR=/opt/asa/cluster
-```
-Restart the service:
-```bash
-systemctl restart asa
-```
-Players will be able to transfer characters, dinos, and items between maps.
 
 🔄 Updating the Server
 
@@ -139,7 +115,7 @@ No manual update command is required.
 
 Every time you run:
 ```bash
-systemctl restart asa
+systemctl restart space-engineer
 ```
 The server will:
 ```text
@@ -152,23 +128,23 @@ Start again
 
 - Start the server:
 ```bash
-systemctl start asa
+systemctl start space-engineer
 ```
 - Stop the server:
 ```bash
-systemctl stop asa
+systemctl stop space-engineer
 ```
 - Restart the server:
 ```bash
-systemctl restart asa
+systemctl restart space-engineer
 ```
 
 📜 Logs
 ```text
 Check service status:
-systemctl status asa
+systemctl status space-engineer
 Follow live logs:
-journalctl -u asa -f
+journalctl -u space-engineer -f
 ```
 
 ⚠️ Notes
@@ -176,7 +152,7 @@ journalctl -u asa -f
 >Do not run multiple servers from the same install directory
 
 ❓ Why This Exists
-- ARK ASA is Windows-only
+- Space Engineer is Windows-only
 - Proton works well
 - Game panels overcomplicate simple infrastructure
 - Linux deserves clean, scriptable tooling
@@ -184,7 +160,5 @@ journalctl -u asa -f
 ❤️ Credits
 - Valve – SteamCMD
 - GloriousEggroll – Proton GE
-- Wildcard – ARK: Survival Ascended
+- Keen Software House - Space Engineer
 - You – for hosting your own servers
-
-
