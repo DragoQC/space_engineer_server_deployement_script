@@ -94,7 +94,7 @@ CFG_FILE="$CONFIG_DIR/SpaceEngineers-Dedicated.cfg"
 START_SCRIPT="$BASE_DIR/start-space-engineer.sh"
 UPDATE_SCRIPT="$BASE_DIR/update-space-engineer.sh"
 SERVICE_FILE="/etc/systemd/system/space-engineer.service"
-WINDOWS_CONFIG_DIR='Z:\opt\space-engineer\server-config'
+WINDOWS_USERDATA_DIR='C:\users\steamuser\Application Data\SpaceEngineersDedicated'
 
 # Define the base paths as variables
 STEAMCMD_DIR="$BASE_DIR/steamcmd"
@@ -307,7 +307,7 @@ cat <<EOF > "$CFG_FILE"
     <FamilySharing>true</FamilySharing>
     <EnableSelectivePhysicsUpdates>false</EnableSelectivePhysicsUpdates>
   </SessionSettings>
-  <LoadWorld>${WINDOWS_CONFIG_DIR}\\Saves\\World</LoadWorld>
+  <LoadWorld>${WINDOWS_USERDATA_DIR}\\Saves\\World</LoadWorld>
   <IP>0.0.0.0</IP>
   <SteamPort>8766</SteamPort>
   <ServerPort>27016</ServerPort>
@@ -330,7 +330,7 @@ cat <<EOF > "$CFG_FILE"
   <AutoUpdateSteamBranch />
   <AutoUpdateBranchPassword />
   <IgnoreLastSession>true</IgnoreLastSession>
-  <PremadeCheckpointPath>${WINDOWS_CONFIG_DIR}\\Checkpoint</PremadeCheckpointPath>
+  <PremadeCheckpointPath>${WINDOWS_USERDATA_DIR}\\Checkpoint</PremadeCheckpointPath>
   <ServerDescription />
   <ServerPasswordHash />
   <ServerPasswordSalt />
@@ -369,9 +369,20 @@ BASE_DIR="/opt/space-engineer"
 CONFIG_DIR="$BASE_DIR/server-config"
 SERVER_FILES_DIR="$BASE_DIR/server-files"
 PROTON_DIR="$BASE_DIR/GE-Proton10-4"
-WINDOWS_CONFIG_DIR='Z:\opt\space-engineer\server-config'
+PROTON_PREFIX="$SERVER_FILES_DIR/steamapps/compatdata/$APP_ID"
+WINE_USERDATA_DIR="$PROTON_PREFIX/pfx/drive_c/users/steamuser/Application Data/SpaceEngineersDedicated"
 
-mkdir -p "$CONFIG_DIR" "$CONFIG_DIR/Saves/World" "$CONFIG_DIR/Checkpoint"
+mkdir -p "$CONFIG_DIR" "$CONFIG_DIR/Saves/World" "$CONFIG_DIR/Checkpoint" "$WINE_USERDATA_DIR"
+
+cp "$CONFIG_DIR/SpaceEngineers-Dedicated.cfg" "$WINE_USERDATA_DIR/SpaceEngineers-Dedicated.cfg"
+
+if [ ! -e "$WINE_USERDATA_DIR/Saves" ]; then
+  ln -s "$CONFIG_DIR/Saves" "$WINE_USERDATA_DIR/Saves"
+fi
+
+if [ ! -e "$WINE_USERDATA_DIR/Checkpoint" ]; then
+  ln -s "$CONFIG_DIR/Checkpoint" "$WINE_USERDATA_DIR/Checkpoint"
+fi
 
 # -----------------------------
 # Proton environment
@@ -384,8 +395,7 @@ export STEAM_COMPAT_CLIENT_INSTALL_PATH="$BASE_DIR"
 # -----------------------------
 exec "$PROTON_DIR/proton" run \
   "$SERVER_FILES_DIR/DedicatedServer64/SpaceEngineersDedicated.exe" \
-  -console \
-  -path "$WINDOWS_CONFIG_DIR" \
+  -noconsole \
   -ignorelastsession
 EOF
 
